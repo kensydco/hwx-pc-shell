@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HWX PC Shell — The Complete Operating System for HOTWORX Studios</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --primary:        #E8392A;
+            --primary-light:  #FF5A4A;
+            --primary-dim:    rgba(232, 57, 42, 0.15);
+            --primary-border: rgba(232, 57, 42, 0.25);
+            --bg:             #0A0A0A;
+            --bg-alt:         #111111;
+            --card:           #161616;
+            --card-hover:     #1E1E1E;
+            --border:         #252525;
+            --text:           #FFFFFF;
+            --muted:          #888888;
+            --dim:            #444444;
+            --font:           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --mono:           'Courier New', Courier, monospace;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        nav {
+            position: fixed;
+            inset: 0 0 auto 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            height: 60px;
+            background: rgba(10, 10, 10, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            text-decoration: none;
+            color: var(--text);
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .nav-badge {
+            background: var(--primary);
+            color: #fff;
+            font-size: 0.65rem;
+            font-weight: 800;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            letter-spacing: 0.06em;
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-size: 0.88rem;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: var(--text); }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            border-radius: 7px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.65rem 1.5rem;
+            cursor: pointer;
+            transition: transform 0.15s, background 0.2s, border-color 0.2s;
+        }
+
+        .btn:hover { transform: translateY(-1px); }
+
+        .btn-filled {
+            background: var(--primary);
+            color: #fff;
+            border: 1px solid var(--primary);
+        }
+
+        .btn-filled:hover { background: var(--primary-light); border-color: var(--primary-light); }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover { border-color: var(--primary); background: var(--primary-dim); }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 8rem 2rem 5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse 65% 45% at 50% 25%, rgba(232,57,42,0.18) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--primary-dim);
+            border: 1px solid var(--primary-border);
+            color: #FF7060;
+            font-size: 0.78rem;
+            font-weight: 700;
+            padding: 0.35rem 1rem;
+            border-radius: 999px;
+            margin-bottom: 1.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.6rem, 6.5vw, 5.2rem);
+            font-weight: 800;
+            line-height: 1.08;
+            letter-spacing: -0.025em;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero h1 .accent { color: var(--primary); }
+
+        .hero-sub {
+            font-size: clamp(1rem, 2vw, 1.2rem);
+            color: var(--muted);
+            max-width: 560px;
+            margin: 0 auto 2.75rem;
+            line-height: 1.75;
+        }
+
+        .hero-ctas {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 3rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 4.5rem;
+            padding-top: 3rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat-number {
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 0.3rem;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+        }
+
+        .section { padding: 6rem 2rem; }
+        .section-alt { background: var(--bg-alt); }
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .section-eyebrow {
+            display: inline-block;
+            color: var(--primary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 0.75rem;
+        }
+
+        .section-title {
+            font-size: clamp(1.9rem, 4vw, 2.9rem);
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+        }
+
+        .section-desc {
+            font-size: 1rem;
+            color: var(--muted);
+            max-width: 520px;
+            line-height: 1.75;
+        }
+
+        .arch-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .arch-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 2rem;
+            position: relative;
+            transition: border-color 0.3s, transform 0.2s;
+        }
+
+        .arch-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+
+        .layer-num {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--dim);
+            letter-spacing: 0.08em;
+        }
+
+        .arch-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: var(--primary-dim);
+            border: 1px solid var(--primary-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .arch-card h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.6rem; }
+        .arch-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.65; margin-bottom: 1.25rem; }
+
+        .pill-row { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+        .pill {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 0.7rem;
+            font-family: var(--mono);
+            padding: 0.2rem 0.55rem;
+            border-radius: 4px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+            gap: 1.25rem;
+            margin-top: 3rem;
+        }
+
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem;
+            transition: border-color 0.3s, background 0.2s;
+        }
+
+        .feature-card:hover {
+            border-color: rgba(232, 57, 42, 0.35);
+            background: var(--card-hover);
+        }
+
+        .feature-icon { font-size: 1.8rem; margin-bottom: 1rem; }
+        .feature-card h3 { font-size: 0.97rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .feature-card p { font-size: 0.87rem; color: var(--muted); line-height: 1.65; }
+
+        .agents-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 3rem;
+        }
+
+        .agent-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            transition: border-color 0.25s, transform 0.2s;
+        }
+
+        .agent-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+        .agent-avatar {
+            width: 40px;
+            height: 40px;
+            flex-shrink: 0;
+            border-radius: 9px;
+            background: var(--primary-dim);
+            border: 1px solid var(--primary-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+        }
+
+        .agent-name { font-size: 0.85rem; font-weight: 600; line-height: 1.3; }
+        .agent-role { font-size: 0.72rem; color: var(--muted); }
+
+        hr.divider { border: none; border-top: 1px solid var(--border); }
+
+        footer {
+            padding: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .footer-logo { display: flex; align-items: center; gap: 0.55rem; font-weight: 700; font-size: 0.95rem; }
+        footer p { font-size: 0.82rem; color: var(--muted); }
+
+        @media (max-width: 760px) {
+            nav { padding: 0 1rem; }
+            .nav-links { display: none; }
+            .hero { padding: 7rem 1.25rem 3rem; }
+            .hero-stats { gap: 1.75rem; }
+            .section { padding: 4rem 1.25rem; }
+            footer { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a href="#" class="nav-logo">
+        <span class="nav-badge">HWX</span>
+        PC Shell
+    </a>
+    <ul class="nav-links">
+        <li><a href="#architecture">Architecture</a></li>
+        <li><a href="#features">Features</a></li>
+        <li><a href="#agents">AI Agents</a></li>
+    </ul>
+    <a href="#features" class="btn btn-filled">Explore Features</a>
+</nav>
+
+<section class="hero">
+    <div>
+        <div class="hero-eyebrow">🔥 Paperclip Shell for HOTWORX Studios</div>
+        <h1>
+            The Complete<br>
+            <span class="accent">Operating System</span><br>
+            for HOTWORX Studios
+        </h1>
+        <p class="hero-sub">
+            A fully pre-built, three-layer CRM + automation + AI management
+            platform — ready to deploy into any HOTWORX franchise location.
+        </p>
+        <div class="hero-ctas">
+            <a href="#architecture" class="btn btn-filled">Explore the Platform</a>
+            <a href="#agents" class="btn btn-outline">Meet the AI Team</a>
+        </div>
+        <div class="hero-stats">
+            <div><div class="stat-number">10</div><div class="stat-label">AI Agents</div></div>
+            <div><div class="stat-number">4</div><div class="stat-label">CRM Pipelines</div></div>
+            <div><div class="stat-number">8</div><div class="stat-label">n8n Workflows</div></div>
+            <div><div class="stat-number">3</div><div class="stat-label">Platform Layers</div></div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-alt" id="architecture">
+    <div class="container">
+        <span class="section-eyebrow">Platform Architecture</span>
+        <h2 class="section-title">Three Layers.<br>One Shell.</h2>
+        <p class="section-desc">Each layer owns its domain — no duplicated logic, no cross-platform confusion. The shell deploys as a single, coherent system.</p>
+        <div class="arch-grid">
+            <div class="arch-card">
+                <span class="layer-num">LAYER 01</span>
+                <div class="arch-icon">🗂️</div>
+                <h3>GHL CRM Layer</h3>
+                <p>The front-office intelligence hub. Manages all lead, member, and partner relationships through structured pipelines, smart tags, and automated follow-up — all within GoHighLevel.</p>
+                <div class="pill-row">
+                    <span class="pill">4 Pipelines</span>
+                    <span class="pill">17 Custom Fields</span>
+                    <span class="pill">20+ Tags</span>
+                    <span class="pill">4 Forms</span>
+                    <span class="pill">3 Calendars</span>
+                </div>
+            </div>
+            <div class="arch-card">
+                <span class="layer-num">LAYER 02</span>
+                <div class="arch-icon">⚡</div>
+                <h3>n8n Automation Layer</h3>
+                <p>The transport backbone. Eight pre-built workflow shells route data between GHL and the Paperclip AI layer — acting strictly as couriers, never as decision-makers.</p>
+                <div class="pill-row">
+                    <span class="pill">8 HXN8N- Workflows</span>
+                    <span class="pill">Docker VPS</span>
+                    <span class="pill">Webhook Transport</span>
+                    <span class="pill">REST API Import</span>
+                </div>
+            </div>
+            <div class="arch-card">
+                <span class="layer-num">LAYER 03</span>
+                <div class="arch-icon">🤖</div>
+                <h3>Paperclip AI Layer</h3>
+                <p>The intelligent delegation core. Ten specialized AI agents handle studio operations — from lead qualification and member retention to partnerships and reporting.</p>
+                <div class="pill-row">
+                    <span class="pill">10 Agents</span>
+                    <span class="pill">Stale Recovery</span>
+                    <span class="pill">Escalation Rules</span>
+                    <span class="pill">Strict Boundaries</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section" id="features">
+    <div class="container">
+        <span class="section-eyebrow">Key Capabilities</span>
+        <h2 class="section-title">Everything a Studio Needs.<br>Nothing It Doesn't.</h2>
+        <p class="section-desc">Each component is pre-configured and placeholder-ready — deploy the shell once, then swap in real studio data per location.</p>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Full Lead Lifecycle Management</h3>
+                <p>From first touch to membership conversion — the HX-SHELL-New-Lead-Pipeline tracks every stage: Responded, Trial Booked, Trial Attended, and Converted.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>At-Risk Member Retention</h3>
+                <p>Proactively identifies and saves at-risk members with a dedicated 8-stage pipeline — outreach starts automatically before a cancellation ever happens.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔄</div>
+                <h3>Win-Back Campaigns</h3>
+                <p>Re-engage lapsed members with the HX-SHELL-WinBack-Pipeline — automated outreach, re-booking flows, and re-activation tracking built in from day one.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🤝</div>
+                <h3>Partnership Pipeline</h3>
+                <p>A full B2B sales pipeline for local business partnerships — from Prospect Identified to Partnership Won — with dedicated inquiry forms and follow-up workflows.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Placeholder-Ready Templates</h3>
+                <p>Every prompt, form, and workflow uses <code style="color:#FF7060;font-size:0.82em;">{{location_name}}</code>, <code style="color:#FF7060;font-size:0.82em;">{{gm_name}}</code>, and <code style="color:#FF7060;font-size:0.82em;">{{trial_offer}}</code> — customize once per studio, never rewrite from scratch.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <h3>One-Command VPS Deployment</h3>
+                <p>The <code style="color:#FF7060;font-size:0.82em;">deploy-vps.sh</code> script stands up the full Docker + n8n environment on any Hostinger VPS. All eight workflow shells import automatically via REST API.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<hr class="divider">
+
+<section class="section section-alt" id="agents">
+    <div class="container">
+        <span class="section-eyebrow">AI Agent Team</span>
+        <h2 class="section-title">10 Agents.<br>One Unified Team.</h2>
+        <p class="section-desc">Each Paperclip agent owns a specific domain — no agent oversteps its boundary. The CEO agent orchestrates; every other role executes within strict escalation rules.</p>
+        <div class="agents-grid">
+            <div class="agent-card"><div class="agent-avatar">👑</div><div><div class="agent-name">CEO</div><div class="agent-role">Orchestrator</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">💼</div><div><div class="agent-name">Sales Director</div><div class="agent-role">Lead Conversion</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">🏋️</div><div><div class="agent-name">GM Coach</div><div class="agent-role">Studio Operations</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">❤️</div><div><div class="agent-name">Member Retention</div><div class="agent-role">At-Risk &amp; Win-Back</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">✍️</div><div><div class="agent-name">Content Strategist</div><div class="agent-role">Marketing &amp; Copy</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">🤝</div><div><div class="agent-name">Partnerships</div><div class="agent-role">B2B Outreach</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">📊</div><div><div class="agent-name">Reporting &amp; QA</div><div class="agent-role">Data &amp; Quality</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">⚙️</div><div><div class="agent-name">Workflow Architect</div><div class="agent-role">Automation Design</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">🔍</div><div><div class="agent-name">Research</div><div class="agent-role">Intelligence &amp; Intel</div></div></div>
+            <div class="agent-card"><div class="agent-avatar">📅</div><div><div class="agent-name">Executive Assistant</div><div class="agent-role">Scheduling &amp; Admin</div></div></div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="footer-logo"><span class="nav-badge">HWX</span> PC Shell</div>
+    <p>Built for HOTWORX franchise operations. Fully accepted &amp; live.</p>
+    <p>Paperclip Agent Factory</p>
+</footer>
+
+</body>
+</html>
