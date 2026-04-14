@@ -1,0 +1,103 @@
+{
+  "name": "HXN8N-05 — Weekly GM KPI Report (Monday 7AM)",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n pulls KPI data from GHL every Monday at 7:00 AM CST, formats a Green/Yellow/Red location summary, and transports it to Paperclip CEO agent for review and owner delivery. n8n assembles the digest; Paperclip CEO decides escalation actions.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "cronExpression": "0 7 * * 1"
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "HXN8N-Schedule-MondayKPI",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/contacts/?locationId={{GHL_SUB_ACCOUNT_ID}}&tags=HX-SHELL-New-Lead&limit=100",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{GHL_API_KEY}}" },
+            { "name": "Version", "value": "2021-07-28" }
+          ]
+        }
+      },
+      "id": "get-new-leads",
+      "name": "HXN8N-GetWeeklyNewLeads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/contacts/?locationId={{GHL_SUB_ACCOUNT_ID}}&tags=HX-SHELL-At-Risk&limit=100",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{GHL_API_KEY}}" },
+            { "name": "Version", "value": "2021-07-28" }
+          ]
+        }
+      },
+      "id": "get-at-risk",
+      "name": "HXN8N-GetAtRiskMembers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = $('HXN8N-GetWeeklyNewLeads').first().json;\nconst atRisk = $('HXN8N-GetAtRiskMembers').first().json;\nconst newLeadCount = leads.contacts ? leads.contacts.length : 0;\nconst atRiskCount = atRisk.contacts ? atRisk.contacts.length : 0;\nconst weekOf = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });\n// Shell scoring — full targets loaded after onboarding\nconst targetNewLeads = parseInt('{{target_new_leads_per_week}}') || 5;\nconst targetAtRiskMax = parseInt('{{target_at_risk_threshold}}') || 8;\nlet kpisBelowTarget = 0;\nif (newLeadCount < targetNewLeads) kpisBelowTarget++;\nif (atRiskCount > targetAtRiskMax) kpisBelowTarget++;\nlet status = 'GREEN';\nif (kpisBelowTarget === 1) status = 'YELLOW';\nif (kpisBelowTarget >= 2) status = 'RED';\nreturn [{ json: { weekOf, location: '{{location_name}}', newLeadCount, atRiskCount, targetNewLeads, targetAtRiskMax, kpisBelowTarget, status } }];"
+      },
+      "id": "score-kpis",
+      "name": "HXN8N-ScoreKPIs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3100/api/tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{PAPERCLIP_API_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "title", "value": "=[HXPCL-WEEKLY-KPI] Week of {{ $json.weekOf }} — {{ $json.location }} — Status: {{ $json.status }}" },
+            { "name": "company", "value": "hotworx-{{city_slug}}" },
+            { "name": "priority", "value": "={% if $json.status === 'RED' %}critical{% elif $json.status === 'YELLOW' %}high{% else %}normal{% endif %}" },
+            { "name": "event_type", "value": "weekly_kpi_report" },
+            { "name": "description", "value": "=Weekly KPI Report — {{ $json.weekOf }}\nLocation: {{ $json.location }}\nStatus: {{ $json.status }}\n\nNew Leads This Week: {{ $json.newLeadCount }} (Target: {{ $json.targetNewLeads }})\nAt-Risk Members: {{ $json.atRiskCount }} (Threshold: {{ $json.targetAtRiskMax }})\nKPIs Below Target: {{ $json.kpisBelowTarget }}\n\nInstructions for CEO agent:\n- GREEN: Log in weekly summary. No action required.\n- YELLOW: Draft GM coaching message for owner review before sending.\n- RED: Immediately escalate to owner [BOARD_APPROVAL_REQUIRED]. Do not draft GM communication." }
+          ]
+        }
+      },
+      "id": "send-to-paperclip-ceo",
+      "name": "HXN8N-SendToPaperclipCEO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "HXN8N-Schedule-MondayKPI": { "main": [[{ "node": "HXN8N-GetWeeklyNewLeads", "type": "main", "index": 0 }, { "node": "HXN8N-GetAtRiskMembers", "type": "main", "index": 0 }]] },
+    "HXN8N-GetWeeklyNewLeads": { "main": [[{ "node": "HXN8N-ScoreKPIs", "type": "main", "index": 0 }]] },
+    "HXN8N-GetAtRiskMembers": { "main": [[{ "node": "HXN8N-ScoreKPIs", "type": "main", "index": 0 }]] },
+    "HXN8N-ScoreKPIs": { "main": [[{ "node": "HXN8N-SendToPaperclipCEO", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

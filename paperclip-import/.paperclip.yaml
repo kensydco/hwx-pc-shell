@@ -1,0 +1,136 @@
+schema: "paperclip/v1"
+agents:
+  ceo:
+    role: "ceo"
+    icon: "crown"
+    capabilities: "Leads the company, owns strategy, prioritization, cross-functional coordination, budget management, and agent orchestration. Delegates all execution work to direct reports. Routes: strategy, hiring, budget, client intake, cross-team conflicts, board communication."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 1
+    permissions:
+      canCreateAgents: true
+  sales-director:
+    role: "sales-director"
+    icon: "trending-up"
+    capabilities: "Converts inbound leads into paying clients and manages the sales pipeline in GoHighLevel. Owns lead qualification, proposal generation, and pipeline progression. Routes: lead scoring, proposals, CRM management, sales strategy."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 2
+  content-strategist:
+    role: "content-strategist"
+    icon: "edit"
+    capabilities: "Establishes Kenny B as the leading voice on AI agent deployment for SMBs. Produces LinkedIn content, case studies, and long-form articles. Routes: content strategy, LinkedIn posts, case studies, brand voice enforcement."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 2
+  lead-gen-specialist:
+    role: "lead-gen-specialist"
+    icon: "search"
+    capabilities: "Builds prospect pipelines by scraping directories for SMB businesses in target verticals using Firecrawl. Delivers qualified lead batches for both internal pipeline and client delivery. Routes: lead scraping, Firecrawl operations, lead batch processing."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "gemini_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 3
+  research-director:
+    role: "research-director"
+    icon: "book-open"
+    capabilities: "Produces market research and business intelligence reports for clients. Synthesizes data from Research Analyst into actionable deliverables. Routes: market research, competitive analysis, strategic intelligence reports."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 2
+  outreach-copywriter:
+    role: "outreach-copywriter"
+    icon: "mail"
+    capabilities: "Writes outbound copy — email sequences, LinkedIn DM scripts, proposal personalization, and follow-up messages. Receives briefs from Sales Director and Content Strategist. Routes: cold outreach, email copy, DM scripts, proposal drafts."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 2
+  lead-qualifier:
+    role: "lead-qualifier"
+    icon: "filter"
+    capabilities: "Processes inbound leads from all sources — GHL form submissions, web chat, and lead batches. Applies qualification scoring, updates CRM records, and routes leads. Routes: lead scoring, CRM data entry, lead routing."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "opencode_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 3
+  customer-success:
+    role: "customer-success"
+    icon: "heart"
+    capabilities: "Monitors support inbox and GHL conversation inbox. Responds to client issues within SLA windows, tracks 30-day guarantee metrics, and identifies upsell opportunities. Routes: support tickets, client issues, guarantee tracking."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 2
+  research-analyst:
+    role: "research-analyst"
+    icon: "database"
+    capabilities: "Gathers and pre-processes raw data for Research Director reports using Gemini batch processing and Firecrawl. Handles bulk document summarization and data extraction. Routes: data gathering, source scraping, batch summarization."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "gemini_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 3
+  client-delivery:
+    role: "client-delivery"
+    icon: "package"
+    capabilities: "Deploys the full technical stack for paying clients — GHL snapshots, Paperclip companies, integration testing. Highest-stakes role; delivery failures violate the 30-day guarantee. Routes: client deployments, GHL setup, testing, go-live verification."
+    adapter:
+      config:
+        dangerouslySkipPermissions: true
+      type: "claude_local"
+    runtime:
+      heartbeat:
+        enabled: true
+        maxConcurrentRuns: 2
+sidebar:
+  agents:
+    - "ceo"
+    - "sales-director"
+    - "content-strategist"
+    - "lead-gen-specialist"
+    - "research-director"
+    - "outreach-copywriter"
+    - "lead-qualifier"
+    - "customer-success"
+    - "research-analyst"
+    - "client-delivery"

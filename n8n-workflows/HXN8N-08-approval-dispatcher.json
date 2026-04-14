@@ -1,0 +1,66 @@
+{
+  "name": "HXN8N-08 — Approval Request Dispatcher (YES/NO/REVIEW)",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n transports BOARD_APPROVAL_REQUIRED notifications from Paperclip to the owner via SMS and email with a simple YES/NO/REVIEW reply interface. Decision logic stays in Paperclip; n8n is the notification transport only.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hotworx/approval-request",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "HXN8N-Webhook-ApprovalRequest",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "hxn8n-approval-request"
+    },
+    {
+      "parameters": {
+        "fromEmail": "approvals@{{YOUR_DOMAIN}}",
+        "toEmail": "{{owner_email}}",
+        "subject": "=[HOTWORX APPROVAL REQUIRED] {{ $json.body.title }}",
+        "emailType": "text",
+        "message": "=HOTWORX Agent Factory — Approval Required\n\nItem: {{ $json.body.title }}\nPriority: {{ $json.body.priority }}\nRequested by: {{ $json.body.agent }}\n\nDetails:\n{{ $json.body.description }}\n\nReply to this email with:\n  YES — to approve\n  NO — to decline\n  REVIEW — to request more information\n\nTask ID: {{ $json.body.task_id }}\nDashboard: dashboard.{{YOUR_DOMAIN}}"
+      },
+      "id": "send-approval-email",
+      "name": "HXN8N-SendApprovalEmail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{TWILIO_ACCOUNT_SID}}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "{{owner_phone}}" },
+            { "name": "From", "value": "{{TWILIO_PHONE_NUMBER}}" },
+            { "name": "Body", "value": "=[HOTWORX APPROVAL REQUIRED] {{ $json.body.title }}\nPriority: {{ $json.body.priority }}\n\nReply YES to approve, NO to decline, REVIEW for more info.\nFull details sent to your email." }
+          ]
+        }
+      },
+      "id": "send-approval-sms",
+      "name": "HXN8N-SendApprovalSMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 400]
+    }
+  ],
+  "connections": {
+    "HXN8N-Webhook-ApprovalRequest": { "main": [[{ "node": "HXN8N-SendApprovalEmail", "type": "main", "index": 0 }, { "node": "HXN8N-SendApprovalSMS", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,66 @@
+{
+  "name": "HXN8N-06 — Failure Alerting (Catch-All)",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n owns failure handling and retry logic. GHL must not own retry or failure alerting. This workflow receives failure events from all other HXN8N workflows and notifies the owner.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hxn8n-failure-alert",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "HXN8N-Webhook-FailureAlert",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "hxn8n-failure-alert"
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@{{YOUR_DOMAIN}}",
+        "toEmail": "{{owner_email}}",
+        "subject": "=[HOTWORX SYSTEM ALERT] Workflow Failure: {{ $json.body.workflow }}",
+        "emailType": "text",
+        "message": "=HOTWORX Agent Factory — Workflow Failure Alert\n\nWorkflow: {{ $json.body.workflow }}\nError: {{ $json.body.error }}\nTimestamp: {{ $now }}\n\nPayload (if available):\n{{ $json.body.payload }}\n\nAction Required: Review n8n dashboard at n8n.{{YOUR_DOMAIN}}"
+      },
+      "id": "send-failure-email",
+      "name": "HXN8N-SendFailureEmail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{TWILIO_ACCOUNT_SID}}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "{{owner_phone}}" },
+            { "name": "From", "value": "{{TWILIO_PHONE_NUMBER}}" },
+            { "name": "Body", "value": "=[HOTWORX SYSTEM ALERT] Workflow failure: {{ $json.body.workflow }}. Error: {{ $json.body.error }}. Check n8n.{{YOUR_DOMAIN}}" }
+          ]
+        }
+      },
+      "id": "send-failure-sms",
+      "name": "HXN8N-SendFailureSMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 400]
+    }
+  ],
+  "connections": {
+    "HXN8N-Webhook-FailureAlert": { "main": [[{ "node": "HXN8N-SendFailureEmail", "type": "main", "index": 0 }, { "node": "HXN8N-SendFailureSMS", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

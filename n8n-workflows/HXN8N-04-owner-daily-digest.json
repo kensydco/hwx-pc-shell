@@ -1,0 +1,112 @@
+{
+  "name": "HXN8N-04 — Owner Daily Digest (KPI Summary)",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n gathers data from GHL and Paperclip, formats a daily digest, and delivers to owner via email and SMS at owner-configured time. Digest assembly belongs in n8n, not GHL.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "cronExpression": "0 {{OWNER_BRIEFING_HOUR}} * * *"
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "HXN8N-Schedule-DailyBriefing",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "notes": "Set cronExpression hour to owner's preferred briefing time (e.g., 7 = 7:00 AM CST)"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://services.leadconnectorhq.com/contacts/?locationId={{GHL_SUB_ACCOUNT_ID}}&tags=HX-SHELL-New-Lead&limit=20",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{GHL_API_KEY}}" },
+            { "name": "Version", "value": "2021-07-28" }
+          ]
+        }
+      },
+      "id": "get-ghl-leads",
+      "name": "HXN8N-GetGHL-NewLeads",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3100/api/tasks?company=hotworx-{{city_slug}}&status=open",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{PAPERCLIP_API_KEY}}" }
+          ]
+        }
+      },
+      "id": "get-paperclip-tasks",
+      "name": "HXN8N-GetPaperclip-OpenTasks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const leads = $('HXN8N-GetGHL-NewLeads').first().json;\nconst tasks = $('HXN8N-GetPaperclip-OpenTasks').first().json;\nconst newLeadCount = leads.contacts ? leads.contacts.length : 0;\nconst openTaskCount = tasks.tasks ? tasks.tasks.length : 0;\nconst today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'America/Chicago' });\nreturn [{ json: { today, newLeadCount, openTaskCount, location: '{{location_name}}' } }];"
+      },
+      "id": "format-digest",
+      "name": "HXN8N-FormatDigest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "briefing@{{YOUR_DOMAIN}}",
+        "toEmail": "{{owner_email}}",
+        "subject": "=[HOTWORX Daily Brief] {{ $json.today }} — {{ $json.location }}",
+        "emailType": "text",
+        "message": "=HOTWORX Daily Briefing — {{ $json.today }}\nLocation: {{ $json.location }}\n\n--- SNAPSHOT ---\nNew Leads (last 24h): {{ $json.newLeadCount }}\nOpen Paperclip Tasks: {{ $json.openTaskCount }}\n\n--- ACTION ITEMS ---\n[Populated by CEO agent at full activation]\n\n--- NOTES ---\nThis is a shell digest. Full KPI data (trials, conversions, at-risk members) will be populated after onboarding.\n\nView dashboard: dashboard.{{YOUR_DOMAIN}}"
+      },
+      "id": "send-email-digest",
+      "name": "HXN8N-SendEmailDigest",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{TWILIO_ACCOUNT_SID}}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "{{owner_phone}}" },
+            { "name": "From", "value": "{{TWILIO_PHONE_NUMBER}}" },
+            { "name": "Body", "value": "=[HOTWORX Daily Brief] {{ $json.today }}\nNew Leads: {{ $json.newLeadCount }} | Open Tasks: {{ $json.openTaskCount }}\nFull brief sent to {{ $json.ownerEmail }}. Dashboard: dashboard.{{YOUR_DOMAIN}}" }
+          ]
+        }
+      },
+      "id": "send-sms-digest",
+      "name": "HXN8N-SendSMSDigest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 400]
+    }
+  ],
+  "connections": {
+    "HXN8N-Schedule-DailyBriefing": { "main": [[{ "node": "HXN8N-GetGHL-NewLeads", "type": "main", "index": 0 }, { "node": "HXN8N-GetPaperclip-OpenTasks", "type": "main", "index": 0 }]] },
+    "HXN8N-GetGHL-NewLeads": { "main": [[{ "node": "HXN8N-FormatDigest", "type": "main", "index": 0 }]] },
+    "HXN8N-GetPaperclip-OpenTasks": { "main": [[{ "node": "HXN8N-FormatDigest", "type": "main", "index": 0 }]] },
+    "HXN8N-FormatDigest": { "main": [[{ "node": "HXN8N-SendEmailDigest", "type": "main", "index": 0 }, { "node": "HXN8N-SendSMSDigest", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,112 @@
+{
+  "name": "HXN8N-07 — EOD Email Missing Escalation",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n checks at the configured EOD cutoff time whether the GM's end-of-day report email has been received. If not, n8n sends a reminder to the GM and notifies the owner. Escalation decision logic stays in Paperclip.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "cronExpression": "0 {{EOD_CUTOFF_HOUR}} * * 1-5"
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "HXN8N-Schedule-EODCutoff",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300],
+      "notes": "Set cronExpression hour to EOD cutoff time agreed with owner (e.g., 20 = 8:00 PM CST). Runs Mon-Fri only."
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 5,
+        "filters": {
+          "sender": "{{gm_email}}",
+          "subject": "EOD",
+          "receivedAfter": "={{ $now.minus({ hours: 24 }).toISO() }}"
+        }
+      },
+      "id": "check-eod-email",
+      "name": "HXN8N-CheckEODEmailReceived",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 2,
+      "position": [500, 300],
+      "notes": "Configure IMAP credentials for the designated EOD inbox. Filter for GM email and EOD subject keyword."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            { "id": "no-eod-email", "leftValue": "={{ $json.length }}", "rightValue": 0, "operator": { "type": "number", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-missing",
+      "name": "HXN8N-IsMissingEOD",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{TWILIO_ACCOUNT_SID}}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "{{gm_phone}}" },
+            { "name": "From", "value": "{{TWILIO_PHONE_NUMBER}}" },
+            { "name": "Body", "value": "Hi {{gm_name}}, this is a reminder that your end-of-day report for {{location_name}} has not been received yet. Please send it to {{eod_inbox_email}} at your earliest convenience. Thank you!" }
+          ]
+        }
+      },
+      "id": "remind-gm",
+      "name": "HXN8N-RemindGM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3100/api/tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{PAPERCLIP_API_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "title", "value": "=[HXPCL-EOD-MISSING] EOD Report Not Received — {{location_name}}" },
+            { "name": "company", "value": "hotworx-{{city_slug}}" },
+            { "name": "priority", "value": "high" },
+            { "name": "event_type", "value": "eod_report_missing" },
+            { "name": "description", "value": "=The GM EOD report for {{location_name}} was not received by the configured cutoff time.\nGM: {{gm_name}}\nDate: {{ $now.toFormat('yyyy-MM-dd') }}\n\nA reminder SMS has been sent to the GM.\nIf no report is received within 2 hours, escalate to owner [BOARD_APPROVAL_REQUIRED]." }
+          ]
+        }
+      },
+      "id": "notify-paperclip",
+      "name": "HXN8N-NotifyPaperclipCEO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 400]
+    }
+  ],
+  "connections": {
+    "HXN8N-Schedule-EODCutoff": { "main": [[{ "node": "HXN8N-CheckEODEmailReceived", "type": "main", "index": 0 }]] },
+    "HXN8N-CheckEODEmailReceived": { "main": [[{ "node": "HXN8N-IsMissingEOD", "type": "main", "index": 0 }]] },
+    "HXN8N-IsMissingEOD": { "main": [[{ "node": "HXN8N-RemindGM", "type": "main", "index": 0 }, { "node": "HXN8N-NotifyPaperclipCEO", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,72 @@
+{
+  "name": "HXN8N-03 — Daily Git Commit (Audit Trail)",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n triggers a shell command at 11:00 PM CST daily to commit all Paperclip company file changes to GitHub for mobile monitoring and audit trail.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "cronExpression": "0 23 * * *"
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "HXN8N-Schedule-11pmCST",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/agentfactory/agent_factory && git add -A && git diff --cached --quiet || git commit -m \"[HOTWORX Auto-Commit] Daily snapshot $(date '+%Y-%m-%d %H:%M CST')\" && git push origin main 2>&1"
+      },
+      "id": "git-commit",
+      "name": "HXN8N-GitCommitAndPush",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            { "id": "check-exit", "leftValue": "={{ $json.exitCode }}", "rightValue": 0, "operator": { "type": "number", "operation": "notEquals" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-exit",
+      "name": "HXN8N-CheckExitCode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/hxn8n-failure-alert",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow", "value": "HXN8N-03-daily-git-commit" },
+            { "name": "error", "value": "=Daily Git commit failed. Exit code: {{ $json.exitCode }}. Output: {{ $json.stdout }}" }
+          ]
+        }
+      },
+      "id": "failure-alert",
+      "name": "HXN8N-FailureAlert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 450]
+    }
+  ],
+  "connections": {
+    "HXN8N-Schedule-11pmCST": { "main": [[{ "node": "HXN8N-GitCommitAndPush", "type": "main", "index": 0 }]] },
+    "HXN8N-GitCommitAndPush": { "main": [[{ "node": "HXN8N-CheckExitCode", "type": "main", "index": 0 }]] },
+    "HXN8N-CheckExitCode": { "main": [[{ "node": "HXN8N-FailureAlert", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

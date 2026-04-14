@@ -1,0 +1,120 @@
+{
+  "name": "HXN8N-01 — GHL New Lead → Paperclip Transport",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n receives GHL webhook, normalizes payload, transports to Paperclip. n8n does NOT assign agent — Paperclip decides internally.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hotworx/new-lead",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "HXN8N-Webhook-GHL-NewLead",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "hxn8n-ghl-new-lead"
+    },
+    {
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            { "id": "set-firstName", "name": "firstName", "value": "={{ $json.body.firstName || $json.firstName || '{{contact_first_name}}' }}", "type": "string" },
+            { "id": "set-lastName", "name": "lastName", "value": "={{ $json.body.lastName || $json.lastName || '{{contact_last_name}}' }}", "type": "string" },
+            { "id": "set-email", "name": "email", "value": "={{ $json.body.email || $json.email || '{{contact_email}}' }}", "type": "string" },
+            { "id": "set-phone", "name": "phone", "value": "={{ $json.body.phone || $json.phone || '{{contact_phone}}' }}", "type": "string" },
+            { "id": "set-source", "name": "source", "value": "={{ $json.body.source || $json.source || 'GHL-Form' }}", "type": "string" },
+            { "id": "set-location", "name": "locationName", "value": "={{ $json.body.locationName || '{{location_name}}' }}", "type": "string" },
+            { "id": "set-contactId", "name": "ghlContactId", "value": "={{ $json.body.contactId || $json.contactId || '' }}", "type": "string" }
+          ]
+        }
+      },
+      "id": "normalize-payload",
+      "name": "HXN8N-Normalize-LeadPayload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3100/api/tasks",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "Bearer {{PAPERCLIP_API_KEY}}" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "title", "value": "=INBOUND LEAD: {{ $json.firstName }} {{ $json.lastName }} — HOTWORX" },
+            { "name": "company", "value": "hotworx-{{city_slug}}" },
+            { "name": "priority", "value": "high" },
+            { "name": "tags", "value": "=[\"inbound-lead\", \"unqualified\", \"HXPCL-new-lead\"]" },
+            { "name": "event_type", "value": "new_lead" },
+            { "name": "source_system", "value": "GHL" },
+            { "name": "description", "value": "=New inbound lead from GHL.\nName: {{ $json.firstName }} {{ $json.lastName }}\nEmail: {{ $json.email }}\nPhone: {{ $json.phone }}\nSource: {{ $json.source }}\nLocation: {{ $json.locationName }}\nGHL Contact ID: {{ $json.ghlContactId }}" }
+          ]
+        }
+      },
+      "id": "send-to-paperclip",
+      "name": "HXN8N-Send-ToPaperclip",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            { "id": "check-success", "leftValue": "={{ $json.id }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-paperclip-response",
+      "name": "HXN8N-Check-PaperclipResponse",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/hxn8n-failure-alert",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "workflow", "value": "HXN8N-01-ghl-new-lead-to-paperclip" },
+            { "name": "error", "value": "Paperclip task creation failed — no task ID returned" },
+            { "name": "payload", "value": "={{ JSON.stringify($json) }}" }
+          ]
+        }
+      },
+      "id": "failure-alert",
+      "name": "HXN8N-FailureAlert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 450]
+    }
+  ],
+  "connections": {
+    "HXN8N-Webhook-GHL-NewLead": { "main": [[{ "node": "HXN8N-Normalize-LeadPayload", "type": "main", "index": 0 }]] },
+    "HXN8N-Normalize-LeadPayload": { "main": [[{ "node": "HXN8N-Send-ToPaperclip", "type": "main", "index": 0 }]] },
+    "HXN8N-Send-ToPaperclip": { "main": [[{ "node": "HXN8N-Check-PaperclipResponse", "type": "main", "index": 0 }]] },
+    "HXN8N-Check-PaperclipResponse": { "main": [[], [{ "node": "HXN8N-FailureAlert", "type": "main", "index": 0 }]] }
+  },
+  "settings": { "executionOrder": "v1" }
+}

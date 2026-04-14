@@ -1,0 +1,106 @@
+{
+  "name": "HXN8N-02 — Paperclip Budget Alert → Owner SMS/Email",
+  "meta": {
+    "owner": "n8n",
+    "boundary": "n8n polls Paperclip API every 6 hours for agent budget usage. Sends alert to owner at 80% and 95% thresholds. No Paperclip agent assignment logic.",
+    "prefix": "HXN8N-",
+    "shell_phase": true
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "hours", "hoursInterval": 6 }] }
+      },
+      "id": "schedule-trigger",
+      "name": "HXN8N-Schedule-Every6Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://localhost:3100/api/agents/budget?company=hotworx-{{city_slug}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "Bearer {{PAPERCLIP_API_KEY}}" }
+          ]
+        }
+      },
+      "id": "get-budget",
+      "name": "HXN8N-GetAgentBudgets",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const agents = $input.all();\nconst alerts = [];\nfor (const agent of agents) {\n  const data = agent.json;\n  const pct = (data.used / data.monthly_limit) * 100;\n  if (pct >= 95) {\n    alerts.push({ agent: data.name, pct: pct.toFixed(1), level: 'CRITICAL', used: data.used, limit: data.monthly_limit });\n  } else if (pct >= 80) {\n    alerts.push({ agent: data.name, pct: pct.toFixed(1), level: 'WARNING', used: data.used, limit: data.monthly_limit });\n  }\n}\nreturn alerts.map(a => ({ json: a }));"
+      },
+      "id": "check-thresholds",
+      "name": "HXN8N-CheckBudgetThresholds",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            { "id": "has-alerts", "leftValue": "={{ $json.agent }}", "rightValue": "", "operator": { "type": "string", "operation": "notEmpty" } }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "has-alerts",
+      "name": "HXN8N-HasAlerts",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/{{TWILIO_ACCOUNT_SID}}/Messages.json",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "To", "value": "{{owner_phone}}" },
+            { "name": "From", "value": "{{TWILIO_PHONE_NUMBER}}" },
+            { "name": "Body", "value": "=[HOTWORX AI BUDGET ALERT] Agent: {{ $json.agent }} is at {{ $json.pct }}% of monthly budget (${{ $json.used }}/${{ $json.limit }}). Level: {{ $json.level }}. Review at dashboard.{{YOUR_DOMAIN}}" }
+          ]
+        }
+      },
+      "id": "send-sms-alert",
+      "name": "HXN8N-SendSMSAlert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@{{YOUR_DOMAIN}}",
+        "toEmail": "{{owner_email}}",
+        "subject": "=[HOTWORX AI] Budget Alert — {{ $json.agent }} at {{ $json.pct }}%",
+        "emailType": "text",
+        "message": "=HOTWORX AI Budget Alert\n\nAgent: {{ $json.agent }}\nUsage: {{ $json.pct }}% (${{ $json.used }} of ${{ $json.limit }})\nLevel: {{ $json.level }}\n\nReview agent activity at: dashboard.{{YOUR_DOMAIN}}\n\nThis alert was generated automatically by the HOTWORX Agent Factory shell."
+      },
+      "id": "send-email-alert",
+      "name": "HXN8N-SendEmailAlert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "HXN8N-Schedule-Every6Hours": { "main": [[{ "node": "HXN8N-GetAgentBudgets", "type": "main", "index": 0 }]] },
+    "HXN8N-GetAgentBudgets": { "main": [[{ "node": "HXN8N-CheckBudgetThresholds", "type": "main", "index": 0 }]] },
+    "HXN8N-CheckBudgetThresholds": { "main": [[{ "node": "HXN8N-HasAlerts", "type": "main", "index": 0 }]] },
+    "HXN8N-HasAlerts": { "main": [[{ "node": "HXN8N-SendSMSAlert", "type": "main", "index": 0 }, { "node": "HXN8N-SendEmailAlert", "type": "main", "index": 0 }], []] }
+  },
+  "settings": { "executionOrder": "v1" }
+}
